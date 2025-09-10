@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
   interface jsPDF {
-    autoTable: (options: any) => jsPDF;
+    autoTable: (options: Record<string, unknown>) => jsPDF;
   }
 }
 
@@ -109,8 +109,9 @@ export const useDisplayedDataExport = () => {
     const root: HTMLElement = container || document.body;
 
     // Helper to collect visible tables and prefix names
-    const collectVisible = (prefix?: string) => {
-      const found = scanForTables(root).filter(t => t.isVisible && t.rowCount > 0);
+    const collectVisible = (prefix?: string, searchContext?: HTMLElement) => {
+      const searchRoot = searchContext || root;
+      const found = scanForTables(searchRoot).filter(t => t.isVisible && t.rowCount > 0);
       found.forEach((t, idx) => {
         if (t.element && !seen.has(t.element)) {
           seen.add(t.element);
@@ -125,70 +126,119 @@ export const useDisplayedDataExport = () => {
       });
     };
 
-    // Record initially active sub-tabs to restore later
-    const initialActiveTriggers = Array.from(root.querySelectorAll('[role="tab"][data-state="active"], [aria-selected="true"], .active')) as HTMLElement[];
+    // Track all active tabs across different levels to restore later
+    const getAllActiveTriggers = (searchRoot: HTMLElement = root) => {
+      return Array.from(searchRoot.querySelectorAll('[role="tab"][data-state="active"], [role="tab"][aria-selected="true"], .active')).filter(el => 
+        el instanceof HTMLElement && el.getAttribute('role') === 'tab'
+      ) as HTMLElement[];
+    };
+
+    const initialActiveTriggers = getAllActiveTriggers();
 
     // Collect from currently active content first
-    collectVisible();
+    collectVisible('Initial Active Content');
 
-    // Find all tab triggers - focus on Radix UI tabs with role="tab"
-    const triggers = Array.from(root.querySelectorAll('[role="tab"]')).filter((el): el is HTMLElement => {
-      const element = el as HTMLElement;
-      // Only include actual tab triggers that are not currently active
-      return element.tagName === 'BUTTON' && 
-             element.getAttribute('data-state') !== 'active' &&
-             element.getAttribute('aria-selected') !== 'true';
-    }) as HTMLElement[];
+    // Recursive function to find and process all tab levels
+    const processTabLevel = async (searchRoot: HTMLElement, levelPrefix: string = '', level: number = 0) => {
+      // Safety check to prevent infinite recursion
+      if (level > 5) {
+        console.warn(`Maximum tab nesting level reached (${level}), stopping recursion`);
+        return;
+      }
 
-    console.log(`Found ${triggers.length} inactive tab triggers to scan`);
+      // Find all tab triggers within this search root that are not currently active
+      const triggers = Array.from(searchRoot.querySelectorAll('[role="tab"]')).filter((el): el is HTMLElement => {
+        const element = el as HTMLElement;
+        // Only include actual tab triggers that are not currently active
+        return element.tagName === 'BUTTON' && 
+               element.getAttribute('data-state') !== 'active' &&
+               element.getAttribute('aria-selected') !== 'true';
+      }) as HTMLElement[];
 
-    // Iterate each trigger, activate, wait, and collect tables
-    for (const trigger of triggers) {
-      const subTabName = (trigger.textContent || trigger.getAttribute('aria-label') || '').trim() || 'Sub Tab';
-      
+      console.log(`Level ${level}: Found ${triggers.length} inactive tab triggers in ${levelPrefix || 'root'}`);
+
+      // Process each trigger at this level
+      for (const trigger of triggers) {
+        const subTabName = (trigger.textContent || trigger.getAttribute('aria-label') || '').trim() || 'Sub Tab';
+        const fullTabName = levelPrefix ? `${levelPrefix} > ${subTabName}` : subTabName;
+        
+        try {
+          console.log(`Level ${level}: Clicking tab: ${fullTabName}`);
+          
+          // Ensure the trigger is scrollable into view and clickable
+          trigger.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+          
+          // Use focus and click for better Radix UI compatibility
+          trigger.focus();
+          trigger.click();
+          
+          // Wait longer for DOM to update and tables to render - increased wait time
+          await new Promise(res => setTimeout(res, 1200));
+          
+          // Force multiple layout reflows to ensure all content is rendered
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+          searchRoot.offsetHeight;
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+          window.getComputedStyle(searchRoot).height;
+          
+          // Additional forced repaint
+          searchRoot.getBoundingClientRect();
+          
+          // Wait a bit more for dynamic content
+          await new Promise(res => setTimeout(res, 300));
+          
+          // Collect tables from this tab
+          const beforeCount = collected.length;
+          collectVisible(fullTabName, searchRoot);
+          const afterCount = collected.length;
+          
+          console.log(`Level ${level}: Collected ${afterCount - beforeCount} tables from sub-tab: ${fullTabName}`);
+
+          // Look for nested tabs within the newly activated tab content
+          // Find the tab content that corresponds to this trigger
+          const tabsContainer = trigger.closest('[role="tablist"]')?.parentElement;
+          if (tabsContainer) {
+            const activeTabContent = tabsContainer.querySelector('[role="tabpanel"][data-state="active"], [data-state="active"] [role="tabpanel"]');
+            if (activeTabContent && activeTabContent instanceof HTMLElement) {
+              // Recursively process nested tabs within this active content
+              await processTabLevel(activeTabContent, fullTabName, level + 1);
+            }
+          }
+          
+        } catch (e) {
+          console.warn(`Level ${level}: Sub-tab switch failed for ${fullTabName}:`, e);
+        }
+      }
+    };
+
+    // Process tabs starting from the root level
+    await processTabLevel(root);
+
+    // Also check for any tabs that might be within currently active content areas
+    const activeTabContents = Array.from(root.querySelectorAll('[role="tabpanel"][data-state="active"], [data-state="active"] [role="tabpanel"]')) as HTMLElement[];
+    for (const activeContent of activeTabContents) {
+      await processTabLevel(activeContent, 'Active Tab Content', 1);
+    }
+
+    // Restore the initially active tabs in reverse order to maintain proper nesting
+    for (let i = initialActiveTriggers.length - 1; i >= 0; i--) {
+      const trigger = initialActiveTriggers[i];
       try {
-        console.log(`Clicking tab: ${subTabName}`);
-        
-        // Ensure the trigger is scrollable into view and clickable
+        console.log(`Restoring active tab: ${trigger.textContent?.trim()}`);
         trigger.scrollIntoView({ behavior: 'instant', block: 'nearest' });
-        
-        // Use focus and click for better Radix UI compatibility
         trigger.focus();
         trigger.click();
-        
-        // Wait for DOM to update and tables to render
-        await new Promise(res => setTimeout(res, 900));
-        
-        // Force multiple layout reflows to ensure all content is rendered
-        root.offsetHeight;
-        window.getComputedStyle(root).height;
-        
-        // Collect tables from this tab
-        const beforeCount = collected.length;
-        collectVisible(subTabName);
-        const afterCount = collected.length;
-        
-        console.log(`Collected ${afterCount - beforeCount} tables from sub-tab: ${subTabName}`);
-      } catch (e) {
-        console.warn(`Sub-tab switch failed for ${subTabName}:`, e);
-      }
-    }
-
-    // Restore the first initially active tab if available
-    if (initialActiveTriggers.length > 0) {
-      try {
-        const firstActive = initialActiveTriggers[0];
-        console.log(`Restoring active tab: ${firstActive.textContent?.trim()}`);
-        firstActive.scrollIntoView({ behavior: 'instant', block: 'nearest' });
-        firstActive.focus();
-        firstActive.click();
         await new Promise(res => setTimeout(res, 200));
       } catch (e) {
-        console.warn('Failed to restore initial active tab:', e);
+        console.warn('Failed to restore initial active tab:', trigger.textContent?.trim(), e);
       }
     }
 
-    console.log(`Total tables collected: ${collected.length} from ${triggers.length + 1} tabs`);
+    // Final collection from restored state
+    await new Promise(res => setTimeout(res, 500));
+    collectVisible('Final Restored State');
+
+    console.log(`Total tables collected: ${collected.length} across all tab levels`);
     return collected;
   };
 
@@ -212,7 +262,9 @@ export const useDisplayedDataExport = () => {
       table.style.maxWidth = 'none';
       
       // Force layout recalculation
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       table.offsetWidth;
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       tableContainer?.offsetWidth;
 
       const rows = Array.from(table.querySelectorAll('tr'));
@@ -323,7 +375,17 @@ export const useDisplayedDataExport = () => {
       yPosition += 10;
 
       // Add table
-      const tableConfig: any = {
+      const tableConfig: {
+        startY: number;
+        head?: string[][];
+        body: string[][];
+        styles: Record<string, unknown>;
+        headStyles: Record<string, unknown>;
+        alternateRowStyles: Record<string, unknown>;
+        margin: { left: number; right: number };
+        tableWidth: string;
+        columnStyles: Record<number, { columnWidth: number }>;
+      } = {
         startY: yPosition,
         head: config.options.includeHeaders && tableData.headers.length > 0 ? [tableData.headers] : undefined,
         body: tableData.rows,
@@ -358,7 +420,7 @@ export const useDisplayedDataExport = () => {
       }
 
       pdf.autoTable(tableConfig);
-      yPosition = (pdf as any).lastAutoTable.finalY + 15;
+      yPosition = ((pdf as { lastAutoTable: { finalY: number } }) as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
     });
 
     pdf.save(`${config.fileName}.pdf`);
