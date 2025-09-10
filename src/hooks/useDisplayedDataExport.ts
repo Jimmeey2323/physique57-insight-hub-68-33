@@ -126,103 +126,157 @@ export const useDisplayedDataExport = () => {
     };
 
     // Record initially active sub-tabs to restore later
-    const initialActiveTriggers = Array.from(root.querySelectorAll('[role="tab"][data-state="active"]')) as HTMLElement[];
+    const initialActiveTriggers = Array.from(root.querySelectorAll('[role="tab"][data-state="active"], .active, [aria-selected="true"]')) as HTMLElement[];
 
     // Collect from currently active content first
     collectVisible();
 
-    // Find all sub-tab triggers within the container
-    const triggers = Array.from(root.querySelectorAll('[role="tab"]')) as HTMLElement[];
+    // Find all sub-tab triggers within the container - use multiple selectors for better coverage
+    const triggers = Array.from(root.querySelectorAll(`
+      [role="tab"],
+      button[data-state],
+      [class*="tab"]:not([role="tabpanel"]),
+      .tab-trigger,
+      .tab-button,
+      [data-radix-collection-item]
+    `)).filter((el): el is HTMLElement => {
+      const element = el as HTMLElement;
+      // Filter out non-clickable elements and already active ones
+      return element.tagName === 'BUTTON' || element.getAttribute('role') === 'tab' || element.classList.contains('tab-trigger');
+    }) as HTMLElement[];
+
+    console.log(`Found ${triggers.length} potential tab triggers`);
 
     // Iterate each trigger, activate, wait, and collect tables
     for (const trigger of triggers) {
-      if (trigger.getAttribute('data-state') === 'active') continue;
-      const subTabName = (trigger.textContent || '').trim() || 'Sub Tab';
+      if (
+        trigger.getAttribute('data-state') === 'active' ||
+        trigger.getAttribute('aria-selected') === 'true' ||
+        trigger.classList.contains('active')
+      ) {
+        continue; // Skip already active tabs
+      }
+      
+      const subTabName = (trigger.textContent || trigger.getAttribute('aria-label') || '').trim() || 'Sub Tab';
+      
       try {
-        trigger.click();
-        // wait a tick for DOM to update
-        await new Promise(res => setTimeout(res, 60));
+        // Ensure the trigger is scrollable into view and clickable
+        trigger.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+        
+        // Try multiple click methods for better compatibility
+        if (trigger.click) {
+          trigger.click();
+        } else if (trigger.dispatchEvent) {
+          trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        }
+        
+        // Wait longer for more complex DOM updates
+        await new Promise(res => setTimeout(res, 150));
+        
+        // Force a layout reflow to ensure DOM is updated
+        root.offsetHeight;
+        
         collectVisible(subTabName);
+        console.log(`Collected tables from sub-tab: ${subTabName}`);
       } catch (e) {
-        // ignore individual trigger errors
-        // console.warn('Sub-tab switch failed', e);
+        console.warn(`Sub-tab switch failed for ${subTabName}:`, e);
       }
     }
 
     // Restore the first initially active tab if available
     if (initialActiveTriggers[0]) {
       try {
+        initialActiveTriggers[0].scrollIntoView({ behavior: 'instant', block: 'nearest' });
         initialActiveTriggers[0].click();
-        await new Promise(res => setTimeout(res, 60));
+        await new Promise(res => setTimeout(res, 100));
       } catch {}
     }
 
+    console.log(`Total tables collected: ${collected.length}`);
     return collected;
   };
 
   const extractTableData = (table: HTMLTableElement, options: ExportConfig['options']): TableData => {
-    const rows = Array.from(table.querySelectorAll('tr'));
-    const extractedData: string[][] = [];
-    let headers: string[] = [];
+    // Temporarily scroll the table to capture all columns if it's horizontally scrollable
+    const tableContainer = table.closest('.overflow-x-auto, .overflow-auto') as HTMLElement || table.parentElement;
+    const originalScrollLeft = tableContainer?.scrollLeft || 0;
+    
+    try {
+      // Scroll all the way to the right to ensure all content is rendered
+      if (tableContainer && tableContainer.scrollWidth > tableContainer.clientWidth) {
+        tableContainer.scrollLeft = tableContainer.scrollWidth;
+        // Small delay to allow rendering
+        // Note: This is sync but needed for proper DOM measurement
+      }
 
-    rows.forEach((row, rowIndex) => {
-      const cells = Array.from(row.querySelectorAll('td, th'));
-      const rowData: string[] = [];
-      
-      cells.forEach(cell => {
-        let cellValue = '';
+      const rows = Array.from(table.querySelectorAll('tr'));
+      const extractedData: string[][] = [];
+      let headers: string[] = [];
+
+      rows.forEach((row, rowIndex) => {
+        const cells = Array.from(row.querySelectorAll('td, th'));
+        const rowData: string[] = [];
         
-        if (options.preserveFormatting) {
-          // Try to preserve formatted content
-          cellValue = cell.textContent?.trim() || '';
+        cells.forEach(cell => {
+          let cellValue = '';
           
-          // Handle special cases like currency, percentages, etc.
-          const innerHTML = cell.innerHTML;
-          if (innerHTML.includes('$') || innerHTML.includes('€') || innerHTML.includes('£')) {
-            // Keep currency symbols
-            const text = cell.textContent?.trim() || '';
-            if (text && !text.includes('$') && !text.includes('€') && !text.includes('£')) {
-              // Add currency symbol if it was in HTML but not in text
-              const currencyMatch = innerHTML.match(/[\\$€£]/);
-              if (currencyMatch) {
-                cellValue = currencyMatch[0] + text;
+          if (options.preserveFormatting) {
+            // Try to preserve formatted content
+            cellValue = cell.textContent?.trim() || '';
+            
+            // Handle special cases like currency, percentages, etc.
+            const innerHTML = cell.innerHTML;
+            if (innerHTML.includes('$') || innerHTML.includes('€') || innerHTML.includes('£')) {
+              // Keep currency symbols
+              const text = cell.textContent?.trim() || '';
+              if (text && !text.includes('$') && !text.includes('€') && !text.includes('£')) {
+                // Add currency symbol if it was in HTML but not in text
+                const currencyMatch = innerHTML.match(/[\\$€£]/);
+                if (currencyMatch) {
+                  cellValue = currencyMatch[0] + text;
+                }
               }
             }
+          } else {
+            cellValue = cell.textContent?.trim() || '';
           }
-        } else {
-          cellValue = cell.textContent?.trim() || '';
-        }
+          
+          rowData.push(cellValue);
+        });
         
-        rowData.push(cellValue);
-      });
-      
-      // First row as headers if it contains th elements or if specified
-      if (rowIndex === 0 && (row.querySelector('th') || options.includeHeaders)) {
-        headers = rowData;
-      } else {
-        // Add row numbers if requested
-        if (options.includeRowNumbers) {
-          rowData.unshift((extractedData.length + 1).toString());
+        // First row as headers if it contains th elements or if specified
+        if (rowIndex === 0 && (row.querySelector('th') || options.includeHeaders)) {
+          headers = rowData;
+        } else {
+          // Add row numbers if requested
+          if (options.includeRowNumbers) {
+            rowData.unshift((extractedData.length + 1).toString());
+          }
+          extractedData.push(rowData);
         }
-        extractedData.push(rowData);
+      });
+
+      // Add row number header if needed
+      if (options.includeRowNumbers && headers.length > 0) {
+        headers.unshift('#');
       }
-    });
 
-    // Add row number header if needed
-    if (options.includeRowNumbers && headers.length > 0) {
-      headers.unshift('#');
+      return {
+        name: '', // Will be set by caller
+        headers,
+        rows: extractedData,
+        metadata: options.includeMetadata ? {
+          originalRowCount: rows.length,
+          originalColumnCount: headers.length,
+          exportedAt: format(new Date(), 'PPP p')
+        } : undefined
+      };
+    } finally {
+      // Restore original scroll position
+      if (tableContainer) {
+        tableContainer.scrollLeft = originalScrollLeft;
+      }
     }
-
-    return {
-      name: '', // Will be set by caller
-      headers,
-      rows: extractedData,
-      metadata: options.includeMetadata ? {
-        originalRowCount: rows.length,
-        originalColumnCount: headers.length,
-        exportedAt: format(new Date(), 'PPP p')
-      } : undefined
-    };
   };
 
   const exportToPDF = (tablesData: TableData[], config: ExportConfig): void => {

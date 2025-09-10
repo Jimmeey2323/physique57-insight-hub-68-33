@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Copy, FileText, FileSpreadsheet, Loader2, Check } from 'lucide-react';
 import { useAdvancedExport } from '@/hooks/useAdvancedExport';
+import { useDisplayedDataExport } from '@/hooks/useDisplayedDataExport';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -24,12 +25,14 @@ export const TableExportControls: React.FC<TableExportControlsProps> = ({
   variant = 'outline',
   className = ''
 }) => {
-  const { exportAllData, isExporting } = useAdvancedExport();
+  const { exportAllData, isExporting: legacyExporting } = useAdvancedExport();
+  const { exportDisplayedData, isExporting: displayedExporting, scanForTablesIncludingSubTabs } = useDisplayedDataExport();
   const [copiedStates, setCopiedStates] = useState<{ csv: boolean; json: boolean }>({ 
     csv: false, 
     json: false 
   });
 
+  const isExporting = legacyExporting || displayedExporting;
   const baseFilename = filename || `${title.toLowerCase().replace(/\s+/g, '-')}-${format(new Date(), 'yyyy-MM-dd-HH-mm')}`;
 
   const convertToCSV = (tableData: any[]): string => {
@@ -78,7 +81,46 @@ export const TableExportControls: React.FC<TableExportControlsProps> = ({
     }
   };
 
-  const handleExport = async (exportFormat: 'pdf' | 'csv') => {
+  const handleAdvancedExport = async (exportFormat: 'pdf' | 'csv') => {
+    try {
+      toast.info('Scanning all tables and sub-tabs...');
+      
+      // Find the closest section container or use document body
+      const sectionContainer = document.querySelector('[data-lov-name="Tabs"]') as HTMLElement || 
+                              document.querySelector('main') as HTMLElement || 
+                              document.body;
+      
+      // Scan for all tables including sub-tabs
+      const availableTables = await scanForTablesIncludingSubTabs(sectionContainer);
+      
+      if (availableTables.length === 0) {
+        toast.error('No tables found to export');
+        return;
+      }
+
+      const config = {
+        format: exportFormat,
+        fileName: baseFilename,
+        options: {
+          includeHeaders: true,
+          preserveFormatting: true,
+          includeRowNumbers: false,
+          separateSheets: exportFormat === 'csv',
+          includeMetadata: true,
+        },
+        tables: availableTables,
+        tabName: title
+      };
+
+      await exportDisplayedData(config);
+      toast.success(`Successfully exported ${availableTables.length} tables as ${exportFormat.toUpperCase()}`);
+    } catch (error) {
+      console.error('Advanced export failed:', error);
+      toast.error(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleLegacyExport = async (exportFormat: 'pdf' | 'csv') => {
     try {
       const exportData = {
         additionalData: {
@@ -143,7 +185,7 @@ export const TableExportControls: React.FC<TableExportControlsProps> = ({
       <Button
         variant={variant}
         size={size}
-        onClick={() => handleExport('csv')}
+        onClick={() => handleAdvancedExport('csv')}
         disabled={isExporting || totalRecords === 0}
         className="gap-2"
       >
@@ -158,7 +200,7 @@ export const TableExportControls: React.FC<TableExportControlsProps> = ({
       <Button
         variant={variant}
         size={size}
-        onClick={() => handleExport('pdf')}
+        onClick={() => handleAdvancedExport('pdf')}
         disabled={isExporting || totalRecords === 0}
         className="gap-2"
       >
