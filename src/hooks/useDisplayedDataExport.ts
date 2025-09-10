@@ -126,88 +126,94 @@ export const useDisplayedDataExport = () => {
     };
 
     // Record initially active sub-tabs to restore later
-    const initialActiveTriggers = Array.from(root.querySelectorAll('[role="tab"][data-state="active"], .active, [aria-selected="true"]')) as HTMLElement[];
+    const initialActiveTriggers = Array.from(root.querySelectorAll('[role="tab"][data-state="active"], [aria-selected="true"], .active')) as HTMLElement[];
 
     // Collect from currently active content first
     collectVisible();
 
-    // Find all sub-tab triggers within the container - use multiple selectors for better coverage
-    const triggers = Array.from(root.querySelectorAll(`
-      [role="tab"],
-      button[data-state],
-      [class*="tab"]:not([role="tabpanel"]),
-      .tab-trigger,
-      .tab-button,
-      [data-radix-collection-item]
-    `)).filter((el): el is HTMLElement => {
+    // Find all tab triggers - focus on Radix UI tabs with role="tab"
+    const triggers = Array.from(root.querySelectorAll('[role="tab"]')).filter((el): el is HTMLElement => {
       const element = el as HTMLElement;
-      // Filter out non-clickable elements and already active ones
-      return element.tagName === 'BUTTON' || element.getAttribute('role') === 'tab' || element.classList.contains('tab-trigger');
+      // Only include actual tab triggers that are not currently active
+      return element.tagName === 'BUTTON' && 
+             element.getAttribute('data-state') !== 'active' &&
+             element.getAttribute('aria-selected') !== 'true';
     }) as HTMLElement[];
 
-    console.log(`Found ${triggers.length} potential tab triggers`);
+    console.log(`Found ${triggers.length} inactive tab triggers to scan`);
 
     // Iterate each trigger, activate, wait, and collect tables
     for (const trigger of triggers) {
-      if (
-        trigger.getAttribute('data-state') === 'active' ||
-        trigger.getAttribute('aria-selected') === 'true' ||
-        trigger.classList.contains('active')
-      ) {
-        continue; // Skip already active tabs
-      }
-      
       const subTabName = (trigger.textContent || trigger.getAttribute('aria-label') || '').trim() || 'Sub Tab';
       
       try {
+        console.log(`Clicking tab: ${subTabName}`);
+        
         // Ensure the trigger is scrollable into view and clickable
         trigger.scrollIntoView({ behavior: 'instant', block: 'nearest' });
         
-        // Try multiple click methods for better compatibility
-        if (trigger.click) {
-          trigger.click();
-        } else if (trigger.dispatchEvent) {
-          trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-        }
+        // Use focus and click for better Radix UI compatibility
+        trigger.focus();
+        trigger.click();
         
-        // Wait longer for more complex DOM updates
-        await new Promise(res => setTimeout(res, 150));
+        // Wait for DOM to update and tables to render
+        await new Promise(res => setTimeout(res, 300));
         
-        // Force a layout reflow to ensure DOM is updated
+        // Force multiple layout reflows to ensure all content is rendered
         root.offsetHeight;
+        window.getComputedStyle(root).height;
         
+        // Collect tables from this tab
+        const beforeCount = collected.length;
         collectVisible(subTabName);
-        console.log(`Collected tables from sub-tab: ${subTabName}`);
+        const afterCount = collected.length;
+        
+        console.log(`Collected ${afterCount - beforeCount} tables from sub-tab: ${subTabName}`);
       } catch (e) {
         console.warn(`Sub-tab switch failed for ${subTabName}:`, e);
       }
     }
 
     // Restore the first initially active tab if available
-    if (initialActiveTriggers[0]) {
+    if (initialActiveTriggers.length > 0) {
       try {
-        initialActiveTriggers[0].scrollIntoView({ behavior: 'instant', block: 'nearest' });
-        initialActiveTriggers[0].click();
-        await new Promise(res => setTimeout(res, 100));
-      } catch {}
+        const firstActive = initialActiveTriggers[0];
+        console.log(`Restoring active tab: ${firstActive.textContent?.trim()}`);
+        firstActive.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+        firstActive.focus();
+        firstActive.click();
+        await new Promise(res => setTimeout(res, 200));
+      } catch (e) {
+        console.warn('Failed to restore initial active tab:', e);
+      }
     }
 
-    console.log(`Total tables collected: ${collected.length}`);
+    console.log(`Total tables collected: ${collected.length} from ${triggers.length + 1} tabs`);
     return collected;
   };
 
   const extractTableData = (table: HTMLTableElement, options: ExportConfig['options']): TableData => {
-    // Temporarily scroll the table to capture all columns if it's horizontally scrollable
-    const tableContainer = table.closest('.overflow-x-auto, .overflow-auto') as HTMLElement || table.parentElement;
+    // Handle horizontally scrollable tables by temporarily expanding them
+    const tableContainer = table.closest('.overflow-x-auto, .overflow-auto, .overflow-scroll') as HTMLElement || table.parentElement;
     const originalScrollLeft = tableContainer?.scrollLeft || 0;
+    const originalWidth = table.style.width;
+    const originalMaxWidth = table.style.maxWidth;
+    const originalOverflow = tableContainer?.style.overflow;
     
     try {
-      // Scroll all the way to the right to ensure all content is rendered
-      if (tableContainer && tableContainer.scrollWidth > tableContainer.clientWidth) {
-        tableContainer.scrollLeft = tableContainer.scrollWidth;
-        // Small delay to allow rendering
-        // Note: This is sync but needed for proper DOM measurement
+      // Temporarily remove scroll constraints to capture all content
+      if (tableContainer) {
+        tableContainer.style.overflow = 'visible';
+        tableContainer.scrollLeft = 0;
       }
+      
+      // Temporarily expand table to show all columns
+      table.style.width = 'max-content';
+      table.style.maxWidth = 'none';
+      
+      // Force layout recalculation
+      table.offsetWidth;
+      tableContainer?.offsetWidth;
 
       const rows = Array.from(table.querySelectorAll('tr'));
       const extractedData: string[][] = [];
@@ -272,8 +278,11 @@ export const useDisplayedDataExport = () => {
         } : undefined
       };
     } finally {
-      // Restore original scroll position
+      // Restore original styles and scroll position
+      table.style.width = originalWidth;
+      table.style.maxWidth = originalMaxWidth;
       if (tableContainer) {
+        tableContainer.style.overflow = originalOverflow || '';
         tableContainer.scrollLeft = originalScrollLeft;
       }
     }
