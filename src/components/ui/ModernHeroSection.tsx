@@ -166,7 +166,13 @@ export const ModernHeroSection: React.FC<ModernHeroSectionProps> = ({
           
           {/* Top 3 Metrics Display */}
           {metrics.length > 0 && <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto animate-fade-in delay-300">
-              {metrics.slice(0, 3).map((metric, index) => {})}
+              {metrics.slice(0, 3).map((metric, index) => (
+                <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                  <div className="text-2xl font-bold text-white">{metric.value}</div>
+                  <div className="text-white/80 text-sm">{metric.label}</div>
+                  <div className="text-white/60 text-xs">{metric.location}</div>
+                </div>
+              ))}
             </div>}
           
           {/* Decorative elements */}
