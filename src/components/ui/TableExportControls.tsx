@@ -7,10 +7,10 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 interface TableExportControlsProps {
-  data: any[];
+  data: Record<string, unknown>[];
   filename?: string;
   title?: string;
-  additionalData?: Record<string, any[]>;
+  additionalData?: Record<string, Record<string, unknown>[]>;
   size?: 'sm' | 'default' | 'lg';
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   className?: string;
@@ -35,7 +35,7 @@ export const TableExportControls: React.FC<TableExportControlsProps> = ({
   const isExporting = legacyExporting || displayedExporting;
   const baseFilename = filename || `${title.toLowerCase().replace(/\s+/g, '-')}-${format(new Date(), 'yyyy-MM-dd-HH-mm')}`;
 
-  const convertToCSV = (tableData: any[]): string => {
+  const convertToCSV = (tableData: Record<string, unknown>[]): string => {
     if (!tableData || tableData.length === 0) return '';
     
     const headers = Object.keys(tableData[0]);
@@ -83,20 +83,42 @@ export const TableExportControls: React.FC<TableExportControlsProps> = ({
 
   const handleAdvancedExport = async (exportFormat: 'pdf' | 'csv') => {
     try {
-      toast.info('Scanning all tables and sub-tabs...');
+      toast.info('Scanning all tables and horizontal sub-tabs... This may take a moment.');
       
       // Find the closest section container or use document body
       const sectionContainer = document.querySelector('[data-lov-name="Tabs"]') as HTMLElement || 
                               document.querySelector('main') as HTMLElement || 
                               document.body;
       
-      // Scan for all tables including sub-tabs
+      // Show progress toast
+      const progressToast = toast.info('Activating sub-tabs to collect all table data...', {
+        duration: 10000,
+      });
+      
+      // Scan for all tables including nested sub-tabs
       const availableTables = await scanForTablesIncludingSubTabs(sectionContainer);
+      
+      // Dismiss progress toast
+      progressToast.dismiss?.();
       
       if (availableTables.length === 0) {
         toast.error('No tables found to export');
         return;
       }
+
+      // Group tables by their prefix to show what was found
+      const tablesBySource = availableTables.reduce((acc, table) => {
+        const source = table.name.includes('—') ? table.name.split('—')[0].trim() : 'Main Content';
+        if (!acc[source]) acc[source] = 0;
+        acc[source]++;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const sourcesSummary = Object.entries(tablesBySource)
+        .map(([source, count]) => `${source}: ${count}`)
+        .join(', ');
+
+      toast.success(`Found ${availableTables.length} tables from: ${sourcesSummary}`);
 
       const config = {
         format: exportFormat,
