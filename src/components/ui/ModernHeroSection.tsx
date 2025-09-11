@@ -128,7 +128,7 @@ export const ModernHeroSection: React.FC<ModernHeroSectionProps> = ({
         Your browser does not support the audio element.
       </audio>
       {/* Background overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20" />
+      <div className="px-0 max-h-14 " />
       
       {/* Animated floating elements */}
       <AnimatedFloatingElements variant={variant} />
