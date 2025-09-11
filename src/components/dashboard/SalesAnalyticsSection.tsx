@@ -588,138 +588,112 @@ export const SalesAnalyticsSection: React.FC<SalesAnalyticsSectionProps> = ({ da
 
               <UnifiedTopBottomSellers data={filteredData} />
 
-              <Tabs defaultValue="yearOnYear" className="w-full">
-                <TabsList className="bg-white/90 backdrop-blur-sm p-2 rounded-2xl shadow-xl border-0 grid grid-cols-6 w-full max-w-6xl mx-auto overflow-hidden">
-                  <TabsTrigger value="yearOnYear" className="relative rounded-xl px-4 py-3 font-semibold text-xs transition-all duration-300 ease-out hover:scale-105 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-50">
-                    Year-on-Year
-                  </TabsTrigger>
-                  <TabsTrigger value="monthOnMonth" className="relative rounded-xl px-4 py-3 font-semibold text-xs transition-all duration-300 ease-out hover:scale-105 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-50">
-                    Month-on-Month
-                  </TabsTrigger>
-                  <TabsTrigger value="productPerformance" className="relative rounded-xl px-4 py-3 font-semibold text-xs transition-all duration-300 ease-out hover:scale-105 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-50">
-                    Product Performance
-                  </TabsTrigger>
-                  <TabsTrigger value="categoryPerformance" className="relative rounded-xl px-4 py-3 font-semibold text-xs transition-all duration-300 ease-out hover:scale-105 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-50">
-                    Category Performance
-                  </TabsTrigger>
-                  <TabsTrigger value="soldByAnalysis" className="relative rounded-xl px-4 py-3 font-semibold text-xs transition-all duration-300 ease-out hover:scale-105 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-50">
-                    Sold By Analysis
-                  </TabsTrigger>
-                  <TabsTrigger value="paymentMethodAnalysis" className="relative rounded-xl px-4 py-3 font-semibold text-xs transition-all duration-300 ease-out hover:scale-105 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-gray-50">
-                    Payment Methods
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="yearOnYear" className="mt-8" data-tab-id="year-on-year-tab">
-                  <section className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-2xl font-bold text-gray-900">Year-on-Year Analysis</h2>
-                      <AdvancedTabExportControls 
-                        tabName="Year-on-Year Analysis"
-                        tabId="year-on-year-tab"
-                        defaultFileName={`year-on-year-${activeLocation}`}
-                      />
-                    </div>
-                    <EnhancedYearOnYearTable 
-                      data={allHistoricData} 
-                      onRowClick={handleRowClick} 
-                      selectedMetric={activeYoyMetric} 
+              {/* All Analysis Tables Stacked Vertically */}
+              <div className="space-y-8">
+                {/* Year-on-Year Analysis */}
+                <section className="space-y-4" data-tab-id="year-on-year-tab">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-900">Year-on-Year Analysis</h2>
+                    <AdvancedTabExportControls 
+                      tabName="Year-on-Year Analysis"
+                      tabId="year-on-year-tab"
+                      defaultFileName={`year-on-year-${activeLocation}`}
                     />
-                  </section>
-                </TabsContent>
+                  </div>
+                  <EnhancedYearOnYearTable 
+                    data={allHistoricData} 
+                    onRowClick={handleRowClick} 
+                    selectedMetric={activeYoyMetric} 
+                  />
+                </section>
 
-                <TabsContent value="monthOnMonth" className="mt-8" data-tab-id="month-on-month-tab">
-                  <section className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-2xl font-bold text-gray-900">Month-on-Month Analysis</h2>
-                      <AdvancedTabExportControls 
-                        tabName="Month-on-Month Analysis"
-                        tabId="month-on-month-tab"
-                        defaultFileName={`month-on-month-${activeLocation}`}
-                      />
-                    </div>
-                    <MonthOnMonthTable 
-                      data={allHistoricData} 
-                      onRowClick={handleRowClick} 
-                      collapsedGroups={collapsedGroups} 
-                      onGroupToggle={handleGroupToggle} 
-                      selectedMetric={activeYoyMetric} 
+                {/* Month-on-Month Analysis */}
+                <section className="space-y-4" data-tab-id="month-on-month-tab">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-900">Month-on-Month Analysis</h2>
+                    <AdvancedTabExportControls 
+                      tabName="Month-on-Month Analysis"
+                      tabId="month-on-month-tab"
+                      defaultFileName={`month-on-month-${activeLocation}`}
                     />
-                  </section>
-                </TabsContent>
+                  </div>
+                  <MonthOnMonthTable 
+                    data={allHistoricData} 
+                    onRowClick={handleRowClick} 
+                    collapsedGroups={collapsedGroups} 
+                    onGroupToggle={handleGroupToggle} 
+                    selectedMetric={activeYoyMetric} 
+                  />
+                </section>
 
-                <TabsContent value="productPerformance" className="mt-8" data-tab-id="product-performance-tab">
-                  <section className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-2xl font-bold text-gray-900">Product Performance Analysis</h2>
-                      <AdvancedTabExportControls 
-                        tabName="Product Performance"
-                        tabId="product-performance-tab"
-                        defaultFileName={`product-performance-${activeLocation}`}
-                      />
-                    </div>
-                    <ProductPerformanceTable 
-                      data={allHistoricData} 
-                      onRowClick={handleRowClick} 
-                      selectedMetric={activeYoyMetric} 
+                {/* Product Performance Analysis */}
+                <section className="space-y-4" data-tab-id="product-performance-tab">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-900">Product Performance Analysis</h2>
+                    <AdvancedTabExportControls 
+                      tabName="Product Performance"
+                      tabId="product-performance-tab"
+                      defaultFileName={`product-performance-${activeLocation}`}
                     />
-                  </section>
-                </TabsContent>
+                  </div>
+                  <ProductPerformanceTable 
+                    data={allHistoricData} 
+                    onRowClick={handleRowClick} 
+                    selectedMetric={activeYoyMetric} 
+                  />
+                </section>
 
-                <TabsContent value="categoryPerformance" className="mt-8" data-tab-id="category-performance-tab">
-                  <section className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-2xl font-bold text-gray-900">Category Performance Analysis</h2>
-                      <AdvancedTabExportControls 
-                        tabName="Category Performance"
-                        tabId="category-performance-tab"
-                        defaultFileName={`category-performance-${activeLocation}`}
-                      />
-                    </div>
-                    <CategoryPerformanceTable 
-                      data={allHistoricData} 
-                      onRowClick={handleRowClick} 
-                      selectedMetric={activeYoyMetric} 
+                {/* Category Performance Analysis */}
+                <section className="space-y-4" data-tab-id="category-performance-tab">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-900">Category Performance Analysis</h2>
+                    <AdvancedTabExportControls 
+                      tabName="Category Performance"
+                      tabId="category-performance-tab"
+                      defaultFileName={`category-performance-${activeLocation}`}
                     />
-                  </section>
-                </TabsContent>
+                  </div>
+                  <CategoryPerformanceTable 
+                    data={allHistoricData} 
+                    onRowClick={handleRowClick} 
+                    selectedMetric={activeYoyMetric} 
+                  />
+                </section>
 
-                <TabsContent value="soldByAnalysis" className="mt-8">
-                  <section className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-2xl font-bold text-gray-900">Sold By Analysis</h2>
-                      <AdvancedTabExportControls 
-                        tabName="Sold By Analysis"
-                        tabId="sold-by-tab"
-                        defaultFileName={`sold-by-analysis-${activeLocation}`}
-                      />
-                    </div>
-                    <SoldByMonthOnMonthTable 
-                      data={allHistoricData} 
-                      onRowClick={handleRowClick} 
-                      selectedMetric={activeYoyMetric} 
+                {/* Sold By Analysis */}
+                <section className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-900">Sold By Analysis</h2>
+                    <AdvancedTabExportControls 
+                      tabName="Sold By Analysis"
+                      tabId="sold-by-tab"
+                      defaultFileName={`sold-by-analysis-${activeLocation}`}
                     />
-                  </section>
-                </TabsContent>
+                  </div>
+                  <SoldByMonthOnMonthTable 
+                    data={allHistoricData} 
+                    onRowClick={handleRowClick} 
+                    selectedMetric={activeYoyMetric} 
+                  />
+                </section>
 
-                <TabsContent value="paymentMethodAnalysis" className="mt-8" data-tab-id="payment-method-tab">
-                  <section className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-2xl font-bold text-gray-900">Payment Method Analysis</h2>
-                      <AdvancedTabExportControls 
-                        tabName="Payment Method Analysis"
-                        tabId="payment-method-tab"
-                        defaultFileName={`payment-method-analysis-${activeLocation}`}
-                      />
-                    </div>
-                    <PaymentMethodMonthOnMonthTable 
-                      data={allHistoricData} 
-                      onRowClick={handleRowClick} 
-                      selectedMetric={activeYoyMetric} 
+                {/* Payment Method Analysis */}
+                <section className="space-y-4" data-tab-id="payment-method-tab">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-900">Payment Method Analysis</h2>
+                    <AdvancedTabExportControls 
+                      tabName="Payment Method Analysis"
+                      tabId="payment-method-tab"
+                      defaultFileName={`payment-method-analysis-${activeLocation}`}
                     />
-                  </section>
-                </TabsContent>
-              </Tabs>
+                  </div>
+                  <PaymentMethodMonthOnMonthTable 
+                    data={allHistoricData} 
+                    onRowClick={handleRowClick} 
+                    selectedMetric={activeYoyMetric} 
+                  />
+                </section>
+              </div>
             </TabsContent>
           ))}
         </Tabs>
