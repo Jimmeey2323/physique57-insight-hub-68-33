@@ -155,7 +155,7 @@ export const ModernHeroSection: React.FC<ModernHeroSectionProps> = ({
       </div>
       
       {/* Content */}
-      <div className="relative z-10 flex items-center justify-center min-h-[732px] p px-[12px] py-12">
+      <div className="relative z-10 flex items-center justify-center min-h-[100px] p px-[4px] py-2">
         <div className="text-center max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-6xl font-bold mb-6 animate-fade-in bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent drop-shadow-lg">
             {title}
@@ -183,6 +183,6 @@ export const ModernHeroSection: React.FC<ModernHeroSectionProps> = ({
       </div>
       
       {/* Bottom gradient fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+      
     </div>;
 };
