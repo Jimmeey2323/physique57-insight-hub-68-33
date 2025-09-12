@@ -295,9 +295,9 @@ export const MonthOnMonthTable: React.FC<MonthOnMonthTableProps> = ({
 
       <CardContent className="p-0">
         <div className="overflow-x-auto rounded-b-2xl">
-          <table className="min-w-full bg-white border-t border-blue-200 rounded-b-2xl shadow-md">
-            <thead className="bg-gradient-to-r from-blue-700 to-blue-900 text-white font-semibold text-sm uppercase tracking-wider sticky top-0 z-0">
-              <tr className="bg-gradient-to-r from-blue-800 to-purple-900 text-white font-semibold text-lg uppercase tracking-wider px-4 py-2 rounded-md">
+          <table className="min-w-full bg-white border-t border-blue-200 shadow-md ">
+            <thead className="bg-gradient-to-r from-blue-800 to-purple-900 text-white font-semibold text-sm uppercase tracking-wider sticky top-0 z-0">
+              <tr className="bg-gradient-to-r from-blue-800 to-purple-900 text-white font-semibold text-sm uppercase tracking-wider px-4 py-2 rounded-none">
                 <th rowSpan={2} className="text-white font-semibold uppercase tracking-wider px-6 py-3 text-left rounded-tl-lg sticky left-0 bg-blue-800 z-30">
                   Category / Product
                 </th>
