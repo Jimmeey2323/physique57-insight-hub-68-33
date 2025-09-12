@@ -128,7 +128,7 @@ export const ModernHeroSection: React.FC<ModernHeroSectionProps> = ({
         Your browser does not support the audio element.
       </audio>
       {/* Background overlay */}
-      <div className="px-0 max-h-14 " />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20" />
       
       {/* Animated floating elements */}
       <AnimatedFloatingElements variant={variant} />
@@ -155,7 +155,7 @@ export const ModernHeroSection: React.FC<ModernHeroSectionProps> = ({
       </div>
       
       {/* Content */}
-      <div className="relative z-10 flex items-center justify-center min-h-[302px] p px-[12px] py-4">
+      <div className="relative z-10 flex items-center justify-center min-h-[732px] p px-[12px] py-12">
         <div className="text-center max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-6xl font-bold mb-6 animate-fade-in bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent drop-shadow-lg">
             {title}
@@ -166,13 +166,11 @@ export const ModernHeroSection: React.FC<ModernHeroSectionProps> = ({
           
           {/* Top 3 Metrics Display */}
           {metrics.length > 0 && <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto animate-fade-in delay-300">
-              {metrics.slice(0, 3).map((metric, index) => (
-                <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-                  <div className="text-2xl font-bold text-white">{metric.value}</div>
-                  <div className="text-white/80 text-sm">{metric.label}</div>
-                  <div className="text-white/60 text-xs">{metric.location}</div>
-                </div>
-              ))}
+              {metrics.slice(0, 3).map((metric, index) => <div key={index} className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+                  <div className="text-sm text-white/70 font-medium mb-2">{metric.location}</div>
+                  <div className="text-2xl md:text-3xl font-bold text-white mb-1">{metric.value}</div>
+                  <div className="text-sm text-white/80">{metric.label}</div>
+                </div>)}
             </div>}
           
           {/* Decorative elements */}
@@ -185,6 +183,6 @@ export const ModernHeroSection: React.FC<ModernHeroSectionProps> = ({
       </div>
       
       {/* Bottom gradient fade */}
-      
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
     </div>;
 };

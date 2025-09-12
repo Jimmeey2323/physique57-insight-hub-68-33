@@ -157,7 +157,7 @@ export const useDisplayedDataExport = () => {
         trigger.click();
         
         // Wait for DOM to update and tables to render
-        await new Promise(res => setTimeout(res, 900));
+        await new Promise(res => setTimeout(res, 300));
         
         // Force multiple layout reflows to ensure all content is rendered
         root.offsetHeight;
